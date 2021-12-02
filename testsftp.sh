@@ -1,76 +1,50 @@
-import requests
-import json
-import time
-import csv
+#!/bin/bash
+#VARIABLES
 
-def getdata():
-    #######################################################################################################
-    ##################################### Edit values here ################################################
+files=("T-TXN-TRANFC-*-ITSCH.DAT" "AT-TXN-TRANFC-*-ITSCH.DAT" "R-SPAD-PASS-*-OPIEI.DAT" "R-RTUT-ITSIS-*-OPIEI.DAT" "R-SAPPR-ITSCH-*-OPIEI.DAT" "R-SBPC-ITSCH-$ITSCH-*-OPIEI.DAT" "R-SETL-ITSCH-*-OPIEI.DAT" "R-SNGD-ITSCH-*-OPIEI.DAT" "R-TREC-ITSCH-*-OPIEI.DAT")
+user="SRCNTABI"
+date=$(date '+%Y%m%d')
+date="20211118"
+sourcefolder="/usr/its/mms/outbox/ch/$date/*"
+targetfolder="/nta-sftp-management/management-scripts/test/"
+ipcopy= ("172.30.20.12" "172.30.20.18")
+LOG="/NTABI/rsync.log"
+i=0
+#CODE
 
-    header = {
-        "Ocp-Apim-Subscription-Key": "314de884588f46079483e99f9d653fba" 
-        }
-    environment ='uat' #ex : uat , prod , dev 
-    date ='2021-11-16' #ex : YYYY-MM-DD 
-    operator= 'buse'   #ex : dbus , buse
-    #outputLocation= 'C:\Users\tkumar\OneDrive - Codec\Documents\Work\NTA'
-    url_base = "https://apiuat.nationaltransport.ie/to/"+operator+"/"+environment+"?filter=Passenger_Journey_Date&operation=eq&param_value='"+date+"'"
-    
-    ###########################################Don't Mdify Below this line ##############################################################
 
-    file_name= 'All_records'+ date +'.json'       # Create filemane All_records_2021-10-28.json
+for i in "${ipcopy[@]}"; do
+    if [[ ! -f $targetfolder/CONTROL-ITSCH-OPIEI-$date.success ]] ; then
+        echo "Job has already run successfully today"
+        exit 0
+    fi
+    success="true"
+    echo "Initial: $success"
+    for file in "${files[@]}"; do
+        if [ "$file" == *"TXN"* ] ; then
+            targetfolder= "/nta-sftp-management/management-scripts/test/TXN/"
+        elif [ "$file" == *"SPAD"* ] ; then
+            targetfolder= "/nta-sftp-management/management-scripts/test/Weekly/"
+        fi
+        echo $success
+        echo "Checking files for file: $file"
+        scp -rp $user@$i:$sourcefolder/$file $targetfolder
+        error=$?
+    done
+        if [ "$error" = "0" ] ; then
+        echo "$file is copied with success"
+    elif [ "$error" = "1" ] ; then
+        success="false"
+        echo "$file does not exist"
+    else
+        success="false"
+    fi
+done 
+if [ $success = "true" ] ; then echo "success" > $targetfolder/CONTROL-ITSCH-OPIEI-$date.success
+#rm $targetfolder/CONTROL-ITSCH-OPIEI-$date.failed
+echo "All jobs run successfully" else
+#echo "failed" > $targetfolder/CONTROL-ITSCH-OPIEI-$date.failed
+echo "Some jobs did not complete successfully"
+fi
 
-    #####################################################################################################################################
-
-    s = requests.Session()
-    nexlink = 1
-    records = 0
-    jsondata= []
-    while nexlink > 0 :
-        # Create String with Skip value
-        print(records)
-        url_get = url_base+"&$skip="+str(records)
-        
-        #Call the API to Get the value 
-        resp = s.get(url_get, headers=header, verify=False)
-        data = resp.json()
-        if 'statusCode' in data:
-            if data['statusCode'] == 429:
-                    print('API Threshold reached starting again in 60s')
-                    time.sleep(60)
-                    continue
-        if '@odata.nextLink' not in data:
-            if 'value' in data:
-                jsondata +=data["value"]
-            nexlink=0
-            print('*********************************End of Script************************************************')
-            print('No next Page found!')
-        else : 
-            print('Collecting Data from Next pages :')
-            print('--------------------------------------------------------------------------------------------------')
-            
-            if records==0: 
-                    jsondata = data["value"]
-            else:
-                    jsondata +=data["value"]
-            print('--------------------------------------------------------------------------------------------------')
-        #Increase the value for next run
-        records += 50
-    with open(file_name, 'w+', encoding='utf-8') as f:
-        json.dump(jsondata, f, ensure_ascii=False, indent=4)
-    with open(file_name) as json_file:
-            jsondata = json.load(json_file)
-    outputfile= 'All_records'+ date +'.csv'
-    data_file = open(outputfile, 'w+', newline='')
-    csv_writer = csv.writer(data_file)
-    count = 0
-    for data in jsondata:
-        if count == 0:
-            header = data.keys()
-            csv_writer.writerow(header)
-            count += 1
-    csv_writer.writerow(data.values())
-    data_file.close()
-    
-getdata()
 
