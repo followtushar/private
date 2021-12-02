@@ -30,7 +30,7 @@ for i in "${ipcopy[@]}"; do
             targetfolder="$basefolder/TXN/$date/"
            
         elif [[ "$file" = *"-SPAD-"* ]] ; then
-           targetfolder="/nta-sftp-management/management-scripts/test/ITS/Weekly/"
+           targetfolder="$basefolder/ITS/Weekly/"
         else
             if [ ! -d "$basefolder/ITS/$date" ]; then
                 mkdir "$basefolder/ITS/$date"
