@@ -7,24 +7,35 @@ date=$(date '+%Y%m%d')
 date="20211118"
 sourcefolder="/usr/its/mms/outbox/ch/$date/*"
 targetfolder="/nta-sftp-management/management-scripts/test/"
-ipcopy= ("172.30.20.12" "172.30.20.18")
-LOG="/NTABI/rsync.log"
+controlfile="/nta-sftp-management/management-scripts/test/"
+basefolder="/nta-sftp-management/management-scripts/test"
+ipcopy=("172.30.20.12" "172.30.20.18")
 i=0
 #CODE
 
 
 for i in "${ipcopy[@]}"; do
-    if [[ ! -f $targetfolder/CONTROL-ITSCH-OPIEI-$date.success ]] ; then
+    if [[ -f $controlfile/CONTROL-ITSCH-OPIEI-$date.success ]] ; then
         echo "Job has already run successfully today"
         exit 0
     fi
     success="true"
     echo "Initial: $success"
+
     for file in "${files[@]}"; do
-        if [ "$file" == *"TXN"* ] ; then
-            targetfolder= "/nta-sftp-management/management-scripts/test/TXN/"
-        elif [ "$file" == *"SPAD"* ] ; then
-            targetfolder= "/nta-sftp-management/management-scripts/test/Weekly/"
+         if [[ "$file" = *"-TXN-"* ]] ; then
+            if [ ! -d "$basefolder/TXN/$date" ]; then
+                mkdir "$basefolder/TXN/$date"
+            fi
+            targetfolder="$basefolder/TXN/$date/"
+           
+        elif [[ "$file" = *"-SPAD-"* ]] ; then
+           targetfolder="/nta-sftp-management/management-scripts/test/ITS/Weekly/"
+        else
+            if [ ! -d "$basefolder/ITS/$date" ]; then
+                mkdir "$basefolder/ITS/$date"
+            fi
+           targetfolder="$basefolder/ITS/$date/"
         fi
         echo $success
         echo "Checking files for file: $file"
